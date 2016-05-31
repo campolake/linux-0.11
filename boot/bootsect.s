@@ -33,7 +33,7 @@
 	begbss:
 	.text
 
-	.equ SETUPLEN, 4		# nr of setup-sectors
+	.equ SETUPLEN, 4		# nr of setup-sectors，setup程序的扇区数
 	.equ BOOTSEG, 0x07c0		# original address of boot-sector
 	.equ INITSEG, 0x9000		# we move boot here - out of the way
 	.equ SETUPSEG, 0x9020		# setup starts here
@@ -44,18 +44,31 @@
 #		0x301 - first partition on first drive etc
 	.equ ROOT_DEV, 0x301
 	ljmp    $BOOTSEG, $_start
+#* ************************************************************************
+#	boot被bios－启动子程序加载至7c00h（31k）处，并将自己移动到了
+#	地址90000h（576k）处，并跳转至那里。
+#	它然后使用BIOS中断将'setup'直接加载到自己的后面（90200h）（576.5k），
+#	并将system加载到地址10000h处。
+#
+#	注意：目前的内核系统最大长度限制为（8*65536）（512kB）字节，即使是在
+#	将来这也应该没有问题的。我想让它保持简单明了。这样512k的最大内核长度应该
+#	足够了，尤其是这里没有象minix中一样包含缓冲区高速缓冲。
+#
+#	加载程序已经做的够简单了，所以持续的读出错将导致死循环。只能手工重启。
+#	只要可能，通过一次取取所有的扇区，加载过程可以做的很快的。
+#************************************************************************ */	
 _start:
 	mov	$BOOTSEG, %ax
 	mov	%ax, %ds
 	mov	$INITSEG, %ax
 	mov	%ax, %es
-	mov	$256, %cx
-	sub	%si, %si
-	sub	%di, %di
-	rep	
+	mov	$256, %cx #计数256字，=512字节
+	sub	%si, %si  #//清空si
+	sub	%di, %di  #//清空di
+	rep	 # 重复执行，直到cx = 0;移动1个字
 	movsw
-	ljmp	$INITSEG, $go
-go:	mov	%cs, %ax
+	ljmp	$INITSEG, $go  #调到移动后的代码的go相对偏移处执行
+go:	mov	%cs, %ax  #将ds、es和ss都置成移动后代码所在的段处（9000h）。
 	mov	%ax, %ds
 	mov	%ax, %es
 # put stack at 0x9ff00.
@@ -64,15 +77,21 @@ go:	mov	%cs, %ax
 
 # load the setup-sectors directly after the bootblock.
 # Note that 'es' is already set up.
-
+#以下10行的用途是利用BIOS中断INT 13h将setup模块从磁盘第2个扇区
+#开始读到90200h开始处，共读4个扇区。如果读出错，则复位驱动器，并重试，没有退路。
+#INT 13h 的使用方法如下：
+#ah = 02h - 读磁盘扇区到内存；al = 需要读出的扇区数量；
+#ch = 磁道（柱面）号的低8位；  cl = 开始扇区（0－5位），磁道号高2位（6－7）
+#dh = 磁头号
+#es:bx ->指向数据缓冲区；  如果出错则CF标志置位。 
 load_setup:
 	mov	$0x0000, %dx		# drive 0, head 0
 	mov	$0x0002, %cx		# sector 2, track 0
 	mov	$0x0200, %bx		# address = 512, in INITSEG
-	.equ    AX, 0x0200+SETUPLEN
+	.equ    AX, 0x0200+SETUPLEN #mov	ax,0200h+SETUPLEN	
 	mov     $AX, %ax		# service 2, nr of sectors
 	int	$0x13			# read it
-	jnc	ok_load_setup		# ok - continue
+	jnc	ok_load_setup		# ok - continue jump not carry
 	mov	$0x0000, %dx
 	mov	$0x0000, %ax		# reset the diskette
 	int	$0x13
@@ -81,23 +100,30 @@ load_setup:
 ok_load_setup:
 
 # Get disk drive parameters, specifically nr of sectors/track
-
+#取磁盘驱动器的参数，特别是每道的扇区数量
+#取磁盘驱动器参数INT 13h调用格式和返回信息如下：
+# ah = 08h	dl = 驱动器号（如果是硬盘则要置位7为1）。
+#返回信息：如果出错则CF置位，并且ah = 状态码
+#ah = 0, al = 0,         bl = 驱动器类型（AT/PS2）
+#ch = 最大磁道号的低8位，cl = 每磁道最大扇区数（位0-5），最大磁道号高2位（位6-7）
+#dh = 最大磁头数，       电力＝ 驱动器数量，
+#es:di -> 软驱磁盘参数表。 
 	mov	$0x00, %dl
 	mov	$0x0800, %ax		# AH=8 is get drive parameters
 	int	$0x13
-	mov	$0x00, %ch
+	mov	$0x00, %ch   #最大磁道号的低8位
 	#seg cs
 	mov	%cx, %cs:sectors+0	# %cs means sectors is in %cs
 	mov	$INITSEG, %ax
 	mov	%ax, %es
 
-# Print some inane message
+# Print some inane message 在显示一些信息（'Loading system ... '回车换行，共24个字符）。
 
-	mov	$0x03, %ah		# read cursor pos
+	mov	$0x03, %ah		# read cursor pos 读取光标位置
 	xor	%bh, %bh
 	int	$0x10
 	
-	mov	$24, %cx
+	mov	$24, %cx  #共计24个字符
 	mov	$0x0007, %bx		# page 0, attribute 7 (normal)
 	#lea	msg1, %bp
 	mov     $msg1, %bp
@@ -246,7 +272,7 @@ sectors:
 
 msg1:
 	.byte 13,10
-	.ascii "Loading system ..."
+	.ascii "Loading linux system ..."
 	.byte 13,10,13,10
 
 	.org 508
