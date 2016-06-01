@@ -165,7 +165,7 @@ root_defined:
 # the setup-routine loaded directly after
 # the bootblock:
 
-	ljmp	$SETUPSEG, $0
+	ljmp	$SETUPSEG, $0  #跳转到setup开始执行
 
 # This routine loads the system at address 0x10000, making sure
 # no 64kB boundaries are crossed. We try to load it as fast as

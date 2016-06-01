@@ -250,7 +250,7 @@ end_move:
 	# 最后2位的00是内核级，与之对应的是应用程序级 11 
 	# 倒数第三位的0为GDT表，如果为1代表LDT表
 	# 倒数第四位表示选择索引为1的段选择符
-    # 跳转到head开始的地方开始执行
+    # 跳转到head开始的地方开始执行，因为 system模块以前移动到了000开始的位置，而head模块位于system的开始部分。
 
 # This routine checks that the keyboard command queue is empty
 # No timeout is used - if this hangs there is something wrong with

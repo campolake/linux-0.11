@@ -16,12 +16,12 @@
 pg_dir:
 .globl startup_32
 startup_32:
-	movl $0x10,%eax
+	movl $0x10,%eax  # 重新设置下段，将所有的段都指向0x10
 	mov %ax,%ds
 	mov %ax,%es
 	mov %ax,%fs
 	mov %ax,%gs
-	lss stack_start,%esp
+	lss stack_start,%esp  #将esp指向stack_start的末尾 
 	call setup_idt
 	call setup_gdt
 	movl $0x10,%eax		# reload all the segment registers
@@ -32,27 +32,26 @@ startup_32:
 	lss stack_start,%esp
 	xorl %eax,%eax
 1:	incl %eax		# check that A20 really IS enabled
-	movl %eax,0x000000	# loop forever if it isn't
+	movl %eax,0x000000	# loop forever if it isn't在实模式下地址会回卷即 0x000000和0x100000地址一样，读取值也应该一样
 	cmpl %eax,0x100000
 	je 1b
-
-/*
- * NOTE! 486 should set bit 16, to check for write-protect in supervisor
- * mode. Then it would be unnecessary with the "verify_area()"-calls.
- * 486 users probably want to set the NE (#5) bit also, so as to use
- * int 16 for math errors.
- */
+#
+# NOTE! 486 should set bit 16, to check for write-protect in supervisor
+# mode. Then it would be unnecessary with the "verify_area()"-calls.
+# 486 users probably want to set the NE (#5) bit also, so as to use
+# int 16 for math errors.
+#
 	movl %cr0,%eax		# check math chip
 	andl $0x80000011,%eax	# Save PG,PE,ET
-/* "orl $0x10020,%eax" here for 486 might be good */
+# "orl $0x10020,%eax" here for 486 might be good */
 	orl $2,%eax		# set MP
 	movl %eax,%cr0
 	call check_x87
 	jmp after_page_tables
 
-/*
- * We depend on ET to be correct. This checks for 287/387.
- */
+
+# We depend on ET to be correct. This checks for 287/387.
+
 check_x87:
 	fninit
 	fstsw %ax
@@ -66,17 +65,17 @@ check_x87:
 1:	.byte 0xDB,0xE4		/* fsetpm for 287, ignored by 387 */
 	ret
 
-/*
- *  setup_idt
- *
- *  sets up a idt with 256 entries pointing to
- *  ignore_int, interrupt gates. It then loads
- *  idt. Everything that wants to install itself
- *  in the idt-table may do so themselves. Interrupts
- *  are enabled elsewhere, when we can be relatively
- *  sure everything is ok. This routine will be over-
- *  written by the page tables.
- */
+#
+# setup_idt
+#
+# sets up a idt with 256 entries pointing to
+# ignore_int, interrupt gates. It then loads
+# idt. Everything that wants to install itself
+# in the idt-table may do so themselves. Interrupts
+# are enabled elsewhere, when we can be relatively
+# sure everything is ok. This routine will be over-
+# written by the page tables.
+#
 setup_idt:
 	lea ignore_int,%edx
 	movl $0x00080000,%eax
@@ -93,26 +92,23 @@ rp_sidt:
 	jne rp_sidt
 	lidt idt_descr
 	ret
-
-/*
- *  setup_gdt
- *
- *  This routines sets up a new gdt and loads it.
- *  Only two entries are currently built, the same
- *  ones that were built in init.s. The routine
- *  is VERY complicated at two whole lines, so this
- *  rather long comment is certainly needed :-).
- *  This routine will beoverwritten by the page tables.
- */
+#
+# setup_gdt
+# This routines sets up a new gdt and loads it.
+# Only two entries are currently built, the same
+# ones that were built in init.s. The routine
+# is VERY complicated at two whole lines, so this
+# rather long comment is certainly needed :-).
+# This routine will beoverwritten by the page tables.
+#
 setup_gdt:
 	lgdt gdt_descr
 	ret
-
-/*
- * I put the kernel page tables right after the page directory,
- * using 4 of them to span 16 Mb of physical memory. People with
- * more than 16MB will have to expand this.
- */
+# 
+# I put the kernel page tables right after the page directory,
+# using 4 of them to span 16 Mb of physical memory. People with
+# more than 16MB will have to expand this.
+# 
 .org 0x1000
 pg0:
 
@@ -126,11 +122,11 @@ pg2:
 pg3:
 
 .org 0x5000
-/*
- * tmp_floppy_area is used by the floppy-driver when DMA cannot
- * reach to a buffer-block. It needs to be aligned, so that it isn't
- * on a 64kB border.
- */
+
+# tmp_floppy_area is used by the floppy-driver when DMA cannot
+# reach to a buffer-block. It needs to be aligned, so that it isn't
+# on a 64kB border.
+
 tmp_floppy_area:
 	.fill 1024,1,0
 
@@ -145,7 +141,7 @@ L6:
 	jmp L6			# main should never return here, but
 				# just in case, we know what happens.
 
-/* This is the default interrupt "handler" :-) */
+# This is the default interrupt "handler" :-) 
 int_msg:
 	.asciz "Unknown interrupt\n\r"
 .align 2
@@ -172,30 +168,30 @@ ignore_int:
 	iret
 
 
-/*
- * Setup_paging
- *
- * This routine sets up paging by setting the page bit
- * in cr0. The page tables are set up, identity-mapping
- * the first 16MB. The pager assumes that no illegal
- * addresses are produced (ie >4Mb on a 4Mb machine).
- *
- * NOTE! Although all physical memory should be identity
- * mapped by this routine, only the kernel page functions
- * use the >1Mb addresses directly. All "normal" functions
- * use just the lower 1Mb, or the local data space, which
- * will be mapped to some other place - mm keeps track of
- * that.
- *
- * For those with more memory than 16 Mb - tough luck. I've
- * not got it, why should you :-) The source is here. Change
- * it. (Seriously - it shouldn't be too difficult. Mostly
- * change some constants etc. I left it at 16Mb, as my machine
- * even cannot be extended past that (ok, but it was cheap :-)
- * I've tried to show which constants to change by having
- * some kind of marker at them (search for "16Mb"), but I
- * won't guarantee that's all :-( )
- */
+#
+# Setup_paging
+#
+# This routine sets up paging by setting the page bit
+# in cr0. The page tables are set up, identity-mapping
+# the first 16MB. The pager assumes that no illegal
+# addresses are produced (ie >4Mb on a 4Mb machine).
+#
+# NOTE! Although all physical memory should be identity
+# mapped by this routine, only the kernel page functions
+# use the >1Mb addresses directly. All "normal" functions
+# use just the lower 1Mb, or the local data space, which
+# will be mapped to some other place - mm keeps track of
+# that.
+#
+# For those with more memory than 16 Mb - tough luck. I've
+# not got it, why should you :-) The source is here. Change
+# it. (Seriously - it shouldn't be too difficult. Mostly
+# change some constants etc. I left it at 16Mb, as my machine
+# even cannot be extended past that (ok, but it was cheap :-)
+# I've tried to show which constants to change by having
+# some kind of marker at them (search for "16Mb"), but I
+# won't guarantee that's all :-( )
+#
 .align 2
 setup_paging:
 	movl $1024*5,%ecx		/* 5 pages - pg_dir+4 page tables */
@@ -234,8 +230,8 @@ gdt_descr:
 	.align 8
 idt:	.fill 256,8,0		# idt is uninitialized
 
-gdt:	.quad 0x0000000000000000	/* NULL descriptor */
-	.quad 0x00c09a0000000fff	/* 16Mb */
-	.quad 0x00c0920000000fff	/* 16Mb */
-	.quad 0x0000000000000000	/* TEMPORARY - don't use */
-	.fill 252,8,0			/* space for LDT's and TSS's etc */
+gdt:	.quad 0x0000000000000000	# NULL descriptor 
+	.quad 0x00c09a0000000fff	# 16Mb 
+	.quad 0x00c0920000000fff	# 16Mb 
+	.quad 0x0000000000000000	# TEMPORARY - don't use 
+	.fill 252,8,0			# space for LDT's and TSS's etc 
