@@ -4,7 +4,7 @@
 # SYS_SIZE is the number of clicks (16 bytes) to be loaded.
 # 0x3000 is 0x30000 bytes = 196kB, more than enough for current
 # versions of linux
-#
+#   SYSSIZE是要加载的节数（16字节为1节）。3000h共为30000h字节＝192kB 对当前的版本空间已足够了。
 	.equ SYSSIZE, 0x3000
 #
 #	bootsect.s		(C) 1991 Linus Torvalds
@@ -34,14 +34,27 @@
 	.text
 
 	.equ SETUPLEN, 4		# nr of setup-sectors，setup程序的扇区数
-	.equ BOOTSEG, 0x07c0		# original address of boot-sector
-	.equ INITSEG, 0x9000		# we move boot here - out of the way
-	.equ SETUPSEG, 0x9020		# setup starts here
-	.equ SYSSEG, 0x1000		# system loaded at 0x10000 (65536).
-	.equ ENDSEG, SYSSEG + SYSSIZE	# where to stop loading
+	.equ BOOTSEG, 0x07c0		# original address of boot-sector bootsect的原始地址（是段地址，以下同）
+	.equ INITSEG, 0x9000		# we move boot here - out of the way 将bootsect移到这里
+	.equ SETUPSEG, 0x9020		# setup starts here setup程序从这里开始
+	.equ SYSSEG, 0x1000		# system loaded at 0x10000 (65536).  system模块加载到10000(64kB)处.
+	.equ ENDSEG, SYSSEG + SYSSIZE	# where to stop loading  停止加载的段地址
 
-# ROOT_DEV:	0x000 - same type of floppy as boot.
-#		0x301 - first partition on first drive etc
+# ROOT_DEV:	0x000 - same type of floppy as boot. 000h - 根文件系统设备使用与引导时同样的软驱设备.
+#		0x301 - first partition on first drive etc      根文件系统设备在第一个硬盘的第一个分区上，等等
+# 方式，具体值的含义如下：
+# 设备号 ＝ 主设备号*256 ＋ 次设备号 
+#           (也即 dev_no = (major<<8 + minor)
+# (主设备号：1－内存，2－磁盘，3－硬盘，4－ttyx，5－tty，6－并行口，7－非命名管道)
+# 300 - /dev/hd0 － 代表整个第1个硬盘
+# 301 - /dev/hd1 － 第1个盘的第1个分区
+# ... ...
+# 304 - /dev/hd4 － 第1个盘的第4个分区
+# 305 - /dev/hd5 － 代表整个第2个硬盘
+# 306 - /dev/hd6 － 第2个盘的第1个分区
+# ... ...
+# 309 - /dev/hd9 － 第1个盘的第4个分区 
+
 	.equ ROOT_DEV, 0x301
 	ljmp    $BOOTSEG, $_start
 #* ************************************************************************
@@ -58,21 +71,21 @@
 #	只要可能，通过一次取取所有的扇区，加载过程可以做的很快的。
 #************************************************************************ */	
 _start:
-	mov	$BOOTSEG, %ax
-	mov	%ax, %ds
-	mov	$INITSEG, %ax
-	mov	%ax, %es
-	mov	$256, %cx #计数256字，=512字节
-	sub	%si, %si  #//清空si
-	sub	%di, %di  #//清空di
+	mov	$BOOTSEG, %ax  
+	mov	%ax, %ds       # 将ds段寄存器置为7C0h
+	mov	$INITSEG, %ax 
+	mov	%ax, %es       # 将es段寄存器置为9000h
+	mov	$256, %cx      # 计数256字，=512字节
+	sub	%si, %si       #//清空si
+	sub	%di, %di       #//清空di
 	rep	 # 重复执行，直到cx = 0;移动1个字
 	movsw
 	ljmp	$INITSEG, $go  #调到移动后的代码的go相对偏移处执行
-go:	mov	%cs, %ax  #将ds、es和ss都置成移动后代码所在的段处（9000h）。
+go:	mov	%cs, %ax  
 	mov	%ax, %ds
-	mov	%ax, %es
+	mov	%ax, %es       # 将ds、es和ss都置成移动后代码所在的段处（9000h）。
 # put stack at 0x9ff00.
-	mov	%ax, %ss
+	mov	%ax, %ss       # 将堆栈指针sp指向9ff00h（即9000h:0ff00h）处
 	mov	$0xFF00, %sp		# arbitrary value >>512
 
 # load the setup-sectors directly after the bootblock.
