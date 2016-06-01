@@ -256,7 +256,7 @@ end_move:
 # No timeout is used - if this hangs there is something wrong with
 # the machine, and we probably couldn't proceed anyway.
 empty_8042:
-	.word	0x00eb,0x00eb jmp $+2, jmp $+2 $ 表示当前指令的地址 是两个跳转指令的机器码(跳转到下一句)，相当于延时空操作。
+	.word	0x00eb,0x00eb #jmp $+2, jmp $+2 $ 表示当前指令的地址 是两个跳转指令的机器码(跳转到下一句)，相当于延时空操作。
 	in	$0x64, %al	# 8042 status port 读AT 键盘控制器状态寄存器。
 	test	$2, %al		# is input buffer full? 测试位2，输入缓冲器满？
 	jnz	empty_8042	# yes - loop
