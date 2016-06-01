@@ -48,6 +48,11 @@ optional
 
 ##2.2. hack linux-0.11
 
-	same as section 1.2
+	准备学习添加一些内存管理的算法、ext2文件系统、tcp/ip 协议栈 的测试代码
 
 
+
+## 3.参考资料
+    Linux内核设计的艺术
+    Linux内核完全注释
+    30天自制操作系统

@@ -140,14 +140,23 @@ pg2:
 .org 0x4000
 pg3:
 
-.org 0x5000
+.org 0x5000  #定义下面的内存数据块从偏移0x5000 处开始
 
 # tmp_floppy_area is used by the floppy-driver when DMA cannot
 # reach to a buffer-block. It needs to be aligned, so that it isn't
 # on a 64kB border.
+# 当DMA（直接存储器访问）不能访问缓冲块时，下面的tmp_floppy_area 内存块
+# 就可供软盘驱动程序使用。其地址需要对齐调整，这样就不会跨越64kB 边界。
 
 tmp_floppy_area:
-	.fill 1024,1,0
+	.fill 1024,1,0  # 保留1024 项，每项1 字节，填充数值0  ：： db 1024 dup(0)	
+
+# 下面这几个入栈操作(pushl)用于为调用/init/main.c 程序和返回作准备。
+# 前面3 个入栈指令不知道作什么用的，也许是Linus 用于在调试时能看清机器码用的.。
+# 139 行的入栈操作是模拟调用main.c 程序时首先将返回地址入栈的操作，所以如果
+# main.c 程序真的退出时，就会返回到这里的标号L6 处继续执行下去，也即死循环。
+# 140 行将main.c 的地址压入堆栈，这样，在设置分页处理（setup_paging）结束后
+# 执行'ret'返回指令时就会将main.c 程序的地址弹出堆栈，并去执行main.c 程序去了。
 
 after_page_tables:
 	pushl $0		# These are the parameters to main :-)
@@ -158,7 +167,7 @@ after_page_tables:
 	jmp setup_paging
 L6:
 	jmp L6			# main should never return here, but
-				# just in case, we know what happens.
+				# just in case, we know what happens. 
 
 # This is the default interrupt "handler" :-) 
 int_msg:
@@ -230,27 +239,43 @@ setup_paging:    #首先对5 页内存（1 页目录+ 4 页页表）清零
 	xorl %eax,%eax
 	xorl %edi,%edi			/* pg_dir is at 0x000 */
 	cld;rep;stosl
+# 下面4 句设置页目录中的项，我们共有4 个页表所以只需设置4 项。
+# 页目录项的结构与页表中项的结构一样，4 个字节为1 项。参见上面的说明。
+# "$pg0+7"表示：0x00001007，是页目录表中的第1 项。
+# 则第1 个页表所在的地址= 0x00001007 & 0xfffff000 = 0x1000；第1 个页表
+# 的属性标志= 0x00001007 & 0x00000fff = 0x07，表示该页存在、用户可读写。	
 	movl $pg0+7,pg_dir		/* set present bit/user r/w */
 	movl $pg1+7,pg_dir+4		/*  --------- " " --------- */
 	movl $pg2+7,pg_dir+8		/*  --------- " " --------- */
 	movl $pg3+7,pg_dir+12		/*  --------- " " --------- */
-	movl $pg3+4092,%edi
-	movl $0xfff007,%eax		/*  16Mb - 4096 + 7 (r/w user,p) */
-	std
+
+# 下面6 行填写4 个页表中所有项的内容，共有：4(页表)*1024(项/页表)=4096 项(0 - 0xfff)，
+# 也即能映射物理内存4096*4Kb = 16Mb。
+# 每项的内容是：当前项所映射的物理内存地址+ 该页的标志（这里均为7）。
+# 使用的方法是从最后一个页表的最后一项开始按倒退顺序填写。一个页表的最后一项
+# 在页表中的位置是1023*4 = 4092。因此最后一页的最后一项的位置就是$pg3+4092。
+
+	movl $pg3+4092,%edi     # di -> 最后一页的最后一项
+	movl $0xfff007,%eax		#  16Mb - 4096 + 7 (r/w user,p)  最后1 项对应物理内存页面的地址是0xfff000，加上属性标志7，即为0xfff007.
+	std                     # 方向位置位，edi 值递减(4 字节)
 1:	stosl			/* fill pages backwards - more efficient :-) */
-	subl $0x1000,%eax
-	jge 1b
+	subl $0x1000,%eax #每填写好一项，物理地址值减0x1000
+	jge 1b            #如果小于0 则说明全添写好了
 	cld
 	xorl %eax,%eax		/* pg_dir is at 0x0000 */
 	movl %eax,%cr3		/* cr3 - page directory start */
-	movl %cr0,%eax
-	orl $0x80000000,%eax
+	movl %cr0,%eax      # 设置启动使用分页处理（cr0 的PG 标志，位31）
+	orl $0x80000000,%eax #添上PG 标志
 	movl %eax,%cr0		/* set paging (PG) bit */
 	ret			/* this also flushes prefetch-queue */
 
-.align 2
+# 在改变分页处理标志后要求使用转移指令刷新预取指令队列，这里用的是返回指令ret。
+# 该返回指令的另一个作用是将堆栈中的main 程序的地址弹出，并开始运行/init/main.c 
+# 程序。本程序到此真正结束了。
+
+.align 2    # 按4 字节方式对齐内存地址边界
 .word 0
-idt_descr:
+idt_descr:  # 下面两行是lidt 指令的6 字节操作数：长度，基址。
 	.word 256*8-1		# idt contains 256 entries
 	.long idt
 .align 2
