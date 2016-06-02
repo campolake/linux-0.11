@@ -10,6 +10,31 @@
  * file also handles (hopefully) fpu-exceptions due to TS-bit, as
  * the fpu must be properly saved/resored. This hasn't been tested.
  */
+ 
+/* eax = -1
+* 系统中断调用(eax=调用号)
+* ebx,ecx,edx 中放有调用参数
+* 调用号超范围?
+* 中断返回
+* 寄存器入栈
+* ds,es 指向内核代码段
+* fs 指向局部数据段(用户数据)
+* 调用对应的C 处理函数
+* 任务状态?
+* 调用schedule() 时间片=0？
+* 初始任务？
+* 弹出入栈的寄存器
+* 超级用户程序?
+* 用户堆栈?
+* 根据进程信号位图取进程的最
+* 小信号量，调用do signal()
+*
+* asm.s 程序中包括大部分的硬件故障（或出错）处理的底层次代码。页异常是由内存管理程序
+* mm 处理的，所以不在这里。此程序还处理（希望是这样）由于TS-位而造成的fpu 异常，
+* 因为fpu 必须正确地进行保存/恢复处理，这些还没有测试过。
+*
+* 本代码文件主要涉及对Intel 保留的中断int0--int16 的处理（int17-int31 留作今后使用）。
+*/ 以下是一些全局函数名的声明，其原形在traps.c 中说明。
 
 .globl divide_error,debug,nmi,int3,overflow,bounds,invalid_op
 .globl double_fault,coprocessor_segment_overrun

@@ -30,9 +30,18 @@
  *	2C(%esp) - %oldss
  */
 
-SIG_CHLD	= 17
+/*system_call.s 文件包含系统调用(system-call)底层处理子程序。由于有些代码比较类似，所以
+* 同时也包括时钟中断处理(timer-interrupt)句柄。硬盘和软盘的中断处理程序也在这里。
+*
+* 注意：这段代码处理信号(signal)识别，在每次时钟中断和系统调用之后都会进行识别。一般
+* 中断信号并不处理信号识别，因为会给系统造成混乱。
+*
+* 从系统调用返回（'ret_from_system_call'）时堆栈的内容见上面19-30 行。
+*/
 
-EAX		= 0x00
+SIG_CHLD	= 17 // 定义SIG_CHLD 信号（子进程停止或结束）。
+
+EAX		= 0x00 // 堆栈中各个寄存器的偏移位置。
 EBX		= 0x04
 ECX		= 0x08
 EDX		= 0x0C
@@ -44,7 +53,7 @@ CS		= 0x20
 EFLAGS		= 0x24
 OLDESP		= 0x28
 OLDSS		= 0x2C
-
+//以下这些是任务结构(task_struct)中变量的偏移值，参见include/linux/sched.h，77 行开始。
 state	= 0		# these are offsets into the task-struct.
 counter	= 4
 priority = 8
