@@ -149,9 +149,9 @@
   type name(void) \
 { \
 long __res; \
-__asm__ volatile ("int $0x80" \  //调用系统终端0x80
-	: "=a" (__res) \             //返回值eax(_res)
-	: "0" (__NR_##name)); \      //输入值为系统调用号
+__asm__ volatile ("int $0x80" \
+	: "=a" (__res) \
+	: "0" (__NR_##name));\
 if (__res >= 0) \
 	return (type) __res; \
 errno = -__res; \

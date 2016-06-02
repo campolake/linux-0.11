@@ -160,7 +160,7 @@ void main(void)		/* This really IS void, no error here. */
 	floppy_init();// 软驱初始化。（kernel/blk_dev/floppy.c）
 	sti();// 所有初始化工作都做完了，开启中断。
 	// 下面过程通过在堆栈中设置的参数，利用中断返回指令切换到任务0。
-	move_to_user_mode();移到用户模式。（include/asm/system.h）
+	move_to_user_mode();//移到用户模式。（include/asm/system.h）
 	if (!fork()) {		/* we count on this going ok */
 		init();
 	}
