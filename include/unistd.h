@@ -2,61 +2,71 @@
 #define _UNISTD_H
 
 /* ok, this may be a joke, but I'm working on it */
-#define _POSIX_VERSION 198808L
+// 标准符号常数和一些函数声明
+
+#define _POSIX_VERSION 198808L //符合IEEE标准1003.1实现的版本号
 
 #define _POSIX_CHOWN_RESTRICTED	/* only root can do a chown (I think..) */
-#define _POSIX_NO_TRUNC		/* no pathname truncation (but see in kernel) */
+#define _POSIX_NO_TRUNC		/* no pathname truncation (but see in kernel) */长路径不截断而是产生错误
+//下面这个符号定义在字符值，禁止终端对其进行处理
 #define _POSIX_VDISABLE '\0'	/* character to disable things like ^C */
 /*#define _POSIX_SAVED_IDS */	/* we'll get to this yet */
 /*#define _POSIX_JOB_CONTROL */	/* we aren't there quite yet. Soon hopefully */
 
-#define STDIN_FILENO	0
-#define STDOUT_FILENO	1
-#define STDERR_FILENO	2
+#define STDIN_FILENO	0  //标准输入句柄
+#define STDOUT_FILENO	1  //标准输出句柄
+#define STDERR_FILENO	2  //标准错误句柄
 
 #ifndef NULL
-#define NULL    ((void *)0)
+#define NULL    ((void *)0) //定义空指针
 #endif
 
-/* access */
-#define F_OK	0
-#define X_OK	1
-#define W_OK	2
-#define R_OK	4
+/* access *//* 文件访问 */
+// 以下定义的符号常数用于access()函数。
+#define F_OK	0     //文件是否存在
+#define X_OK	1     //文件是否可以执行
+#define W_OK	2     //文件是否可以写
+#define R_OK	4     //文件是否可以读
 
-/* lseek */
-#define SEEK_SET	0
-#define SEEK_CUR	1
-#define SEEK_END	2
+/* lseek *//* 文件指针重定位 */
+// 以下符号常数用于lseek()和fcntl()函数。
+#define SEEK_SET	0  // 将文件读写指针设置为偏移值。 ×从头计算
+#define SEEK_CUR	1  // 将文件读写指针设置为当前值加上偏移值。 ×从当前位置开始计算
+#define SEEK_END	2  // 将文件读写指针设置为文件长度加上偏移值。×从末尾开始计算
 
 /* _SC stands for System Configuration. We don't use them much */
-#define _SC_ARG_MAX		1
-#define _SC_CHILD_MAX		2
-#define _SC_CLOCKS_PER_SEC	3
-#define _SC_NGROUPS_MAX		4
-#define _SC_OPEN_MAX		5
-#define _SC_JOB_CONTROL		6
-#define _SC_SAVED_IDS		7
-#define _SC_VERSION		8
+/* _SC 表示系统配置。我们很少使用 */
+// 下面的符号常数用于sysconf()函数。
+#define _SC_ARG_MAX		1          // 最大变量数。
+#define _SC_CHILD_MAX		2      // 子进程最大数。
+#define _SC_CLOCKS_PER_SEC	3      // 每秒滴答数。
+#define _SC_NGROUPS_MAX		4      // 最大组数。
+#define _SC_OPEN_MAX		5      // 最大打开文件数。
+#define _SC_JOB_CONTROL		6      // 作业控制。
+#define _SC_SAVED_IDS		7      // 保存的标识符。
+#define _SC_VERSION		8          // 版本。
 
 /* more (possibly) configurable things - now pathnames */
-#define _PC_LINK_MAX		1
-#define _PC_MAX_CANON		2
-#define _PC_MAX_INPUT		3
-#define _PC_NAME_MAX		4
-#define _PC_PATH_MAX		5
-#define _PC_PIPE_BUF		6
-#define _PC_NO_TRUNC		7
+/* 更多的（可能的）可配置参数 - 现在用于路径名 */
+// 下面的符号常数用于pathconf()函数。
+#define _PC_LINK_MAX		1      // 连接最大数。
+#define _PC_MAX_CANON		2      // 最大常规文件数。
+#define _PC_MAX_INPUT		3      // 最大输入长度。
+#define _PC_NAME_MAX		4      // 名称最大长度。
+#define _PC_PATH_MAX		5      // 路径最大长度。
+#define _PC_PIPE_BUF		6      // 管道缓冲大小。
+#define _PC_NO_TRUNC		7      // 文件名不截断。
 #define _PC_VDISABLE		8
-#define _PC_CHOWN_RESTRICTED	9
+#define _PC_CHOWN_RESTRICTED	9  // 改变宿主受限。
 
-#include <sys/stat.h>
-#include <sys/times.h>
-#include <sys/utsname.h>
-#include <utime.h>
+#include <sys/stat.h>              // 文件状态头文件。含有文件或文件系统状态结构stat{}和常量。
+#include <sys/times.h>             // 定义了进程中运行时间结构tms 以及times()函数原型。
+#include <sys/utsname.h>           // 系统名称结构头文件。
+#include <utime.h>                 // 用户时间头文件。定义了访问和修改时间结构以及utime()原型。
 
 #ifdef __LIBRARY__
-
+// 以下是内核实现的系统调用符号常数，用于作为系统调用函数表中的索引值。( include/linux/sys.h )
+// __NR_setup 仅用于初始化，以启动系统 
 #define __NR_setup	0	/* used only by init, to get system going */
 #define __NR_exit	1
 #define __NR_fork	2
@@ -130,13 +140,18 @@
 #define __NR_setreuid	70
 #define __NR_setregid	71
 
+// 以下定义系统调用嵌入式汇编宏函数。
+// 不带参数的系统调用宏函数。type name(void)。
+// %0 - eax(__res)，%1 - eax(__NR_##name)。其中name 是系统调用的名称，与 __NR_ 组合形成上面
+// 的系统调用符号常数，从而用来对系统调用表中函数指针寻址。
+// 返回：如果返回值大于等于0，则返回该值，否则置出错号errno，并返回-1。
 #define _syscall0(type,name) \
   type name(void) \
 { \
 long __res; \
-__asm__ volatile ("int $0x80" \
-	: "=a" (__res) \
-	: "0" (__NR_##name)); \
+__asm__ volatile ("int $0x80" \  //调用系统终端0x80
+	: "=a" (__res) \             //返回值eax(_res)
+	: "0" (__NR_##name)); \      //输入值为系统调用号
 if (__res >= 0) \
 	return (type) __res; \
 errno = -__res; \
