@@ -39,9 +39,9 @@
 * 从系统调用返回（'ret_from_system_call'）时堆栈的内容见上面19-30 行。
 */
 
-SIG_CHLD	= 17 // 定义SIG_CHLD 信号（子进程停止或结束）。
+SIG_CHLD	= 17 # 定义SIG_CHLD 信号（子进程停止或结束）。
 
-EAX		= 0x00 // 堆栈中各个寄存器的偏移位置。
+EAX		= 0x00 # 堆栈中各个寄存器的偏移位置。
 EBX		= 0x04
 ECX		= 0x08
 EDX		= 0x0C

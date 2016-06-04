@@ -34,7 +34,8 @@
 * 因为fpu 必须正确地进行保存/恢复处理，这些还没有测试过。
 *
 * 本代码文件主要涉及对Intel 保留的中断int0--int16 的处理（int17-int31 留作今后使用）。
-*/ 以下是一些全局函数名的声明，其原形在traps.c 中说明。
+* 以下是一些全局函数名的声明，其原形在traps.c 中说明。
+*/
 
 .globl divide_error,debug,nmi,int3,overflow,bounds,invalid_op
 .globl double_fault,coprocessor_segment_overrun

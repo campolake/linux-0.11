@@ -20,6 +20,10 @@
  * Also corrected some "invalidate()"s - I wasn't doing enough of them.
  */
 
+ /*
+ * page module is base on the fenduan module
+ */
+
 #include <signal.h>
 
 #include <asm/system.h>
